@@ -1,11 +1,8 @@
-package main
+package authentity
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-
-	"github.com/vaiktorg/grimoire/helpers"
 
 	"github.com/vaiktorg/Authentity/handlers"
 
@@ -18,7 +15,7 @@ import (
 )
 
 func Routes(r *mux.Router) error {
-	db, err := gorm.Open(sqlite.Open(fmt.Sprintf(`Authentity/%s.db`, helpers.MakeTimestampStr())), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("DB.db"), &gorm.Config{})
 	if err != nil {
 		return err
 	}

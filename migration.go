@@ -1,4 +1,4 @@
-package main
+package authentity
 
 import (
 	"encoding/json"
@@ -20,21 +20,14 @@ func Migrate(db *gorm.DB) error {
 }
 
 func Drop(db *gorm.DB) error {
-	tables := []interface{}{
-		&entities.Account{},
-		&entities.Profile{},
-		&entities.Identity{},
-		&entities.Groups{},
-		&entities.Permissions{},
-		&entities.Address{},
-	}
-	for _, model := range tables {
-		err := db.Migrator().DropTable(model)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return db.Transaction(func(tx *gorm.DB) error {
+		return tx.Migrator().DropTable(
+			&entities.Account{},
+			&entities.Profile{},
+			&entities.Identity{},
+			&entities.Address{},
+		)
+	})
 }
 
 func DummyData(db *gorm.DB) error {

@@ -1,13 +1,14 @@
-package main
+package authentity
 
 import (
 	"errors"
+	"fmt"
 	"github.com/vaiktorg/Authentity/entities"
 	"github.com/vaiktorg/Authentity/gwt"
+	"github.com/vaiktorg/grimoire/helpers"
+	"gorm.io/driver/sqlite"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 
 	"gorm.io/gorm"
 
@@ -22,25 +23,27 @@ type (
 )
 
 var (
-	Repo *Authentity
+	Global *Authentity
 )
 
-func RepoInit(dialector gorm.Dialector) {
-	Repo = NewAuthentity(dialector)
+func init() {
+	Global = NewAuthentity(fmt.Sprintf("Global_%s", helpers.MakeTimestampNum()))
 }
 
-func NewAuthentity(dialector gorm.Dialector) *Authentity {
-	db, err := gorm.Open(dialector, &gorm.Config{})
+func NewAuthentity(issuerName string) *Authentity {
+	db, err := gorm.Open(sqlite.Open("DB.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
 	auth := &Authentity{
 		IdentityRepo: NewAuthentityRepo(db),
-		Issuer:       uuid.New().String(),
+		Issuer:       issuerName,
 	}
 
-	Migrate(db)
+	if err := Migrate(db); err != nil {
+		panic(err)
+	}
 
 	return auth
 }
@@ -76,7 +79,7 @@ func (a *Authentity) RegisterIdentity(prof *entities.Profile, acc *entities.Acco
 }
 
 func (a *Authentity) LoginToken(tkn string) error {
-	gwt, err := gwt.DecodeGWT(tkn)
+	gwtToken, err := gwt.DecodeGWT(tkn)
 	if err != nil {
 		return err
 	}
@@ -86,24 +89,24 @@ func (a *Authentity) LoginToken(tkn string) error {
 		return a.IdentityRepo.Persist(iden)
 	}
 
-	if gwt.Header.Issuer != a.Issuer {
+	if gwtToken.Header.Issuer != a.Issuer {
 		return errors.New("token not issued by server")
 	}
 
-	if time.Since(gwt.Header.Timestamp) >= ExpireTime {
+	if time.Since(gwtToken.Header.Timestamp) >= ExpireTime {
 		return errors.New("token expired")
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByID(gwt.Header.ID)
+	iden, err := a.IdentityRepo.FindIdentityByID(gwtToken.Header.ID)
 	if err != nil {
 		return errors.New("identity not found")
 	}
 
-	if iden.ID != gwt.Header.ID {
+	if iden.ID != gwtToken.Header.ID {
 		return errors.New("identity id mismatch")
 	}
 
-	if strings.Compare(iden.Signature, gwt.Signature) != 0 {
+	if strings.Compare(iden.Signature, gwtToken.Signature) != 0 {
 		_ = clearSig(iden)
 		return errors.New("signature mismatch")
 	}
@@ -145,12 +148,12 @@ func (a *Authentity) LoginManual(username, email, password string) (string, erro
 }
 
 func (a *Authentity) LogoutToken(tkn string) error {
-	gwt, err := gwt.DecodeGWT(tkn)
+	gwtToken, err := gwt.DecodeGWT(tkn)
 	if err != nil {
 		return err
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByID(gwt.Header.ID)
+	iden, err := a.IdentityRepo.FindIdentityByID(gwtToken.Header.ID)
 	if err != nil {
 		return errors.New("account not found")
 	}
