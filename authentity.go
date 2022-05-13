@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/vaiktorg/Authentity/entities"
-	"github.com/vaiktorg/Authentity/gwt"
 	"github.com/vaiktorg/grimoire/helpers"
+	"github.com/vaiktorg/gwt"
 	"gorm.io/driver/sqlite"
 	"strings"
 	"time"
@@ -56,7 +56,7 @@ func (a *Authentity) RegisterIdentity(prof *entities.Profile, acc *entities.Acco
 		return errors.New("username already being used")
 	}
 
-	hpass, err := bcrypt.GenerateFromPassword([]byte(acc.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(acc.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return errors.New("could not create hashed password")
 	}
@@ -66,7 +66,7 @@ func (a *Authentity) RegisterIdentity(prof *entities.Profile, acc *entities.Acco
 		Account: &entities.Account{
 			Username: acc.Username,
 			Email:    acc.Email,
-			Password: string(hpass),
+			Password: string(hashedPassword),
 		},
 	}
 
@@ -79,35 +79,36 @@ func (a *Authentity) RegisterIdentity(prof *entities.Profile, acc *entities.Acco
 }
 
 func (a *Authentity) LoginToken(tkn string) error {
-	gwtToken, err := gwt.DecodeGWT(tkn)
+	gwtTok := gwt.GWT{}
+	err := gwtTok.Decode(tkn)
 	if err != nil {
 		return err
 	}
 
-	clearSig := func(iden *entities.Identity) error {
-		iden.Signature = ""
-		return a.IdentityRepo.Persist(iden)
+	clearSig := func(identity *entities.Identity) error {
+		identity.Signature = ""
+		return a.IdentityRepo.Persist(identity)
 	}
 
-	if gwtToken.Header.Issuer != a.Issuer {
+	if gwtTok.Header.Issuer != a.Issuer {
 		return errors.New("token not issued by server")
 	}
 
-	if time.Since(gwtToken.Header.Timestamp) >= ExpireTime {
+	if time.Since(gwtTok.Header.Timestamp) >= ExpireTime {
 		return errors.New("token expired")
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByID(gwtToken.Header.ID)
+	identity, err := a.IdentityRepo.FindIdentityByID(gwtTok.Header.ID)
 	if err != nil {
 		return errors.New("identity not found")
 	}
 
-	if iden.ID != gwtToken.Header.ID {
+	if identity.ID != gwtTok.Header.ID {
 		return errors.New("identity id mismatch")
 	}
 
-	if strings.Compare(iden.Signature, gwtToken.Signature) != 0 {
-		_ = clearSig(iden)
+	if strings.Compare(identity.Signature, string(gwtTok.Signature)) != 0 {
+		_ = clearSig(identity)
 		return errors.New("signature mismatch")
 	}
 
@@ -127,19 +128,19 @@ func (a *Authentity) LoginManual(username, email, password string) (string, erro
 		return "", errors.New("password does not match")
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByAccountID(acc.ID)
+	identity, err := a.IdentityRepo.FindIdentityByAccountID(acc.ID)
 	if err != nil {
 		return "", err
 	}
 
-	tok, sig, err := gwt.NewToken(iden.ID, a.Issuer, gwt.Spice.Salt, gwt.Spice.Pepper, iden)
+	tok, sig, err := gwt.NewDefaultGWT(a.Issuer).Encode(identity)
 	if err != nil {
 		return "", err
 	}
 
-	iden.Signature = sig
+	identity.Signature = sig
 
-	err = a.IdentityRepo.Persist(iden)
+	err = a.IdentityRepo.Persist(identity)
 	if err != nil {
 		return "", err
 	}
@@ -148,17 +149,18 @@ func (a *Authentity) LoginManual(username, email, password string) (string, erro
 }
 
 func (a *Authentity) LogoutToken(tkn string) error {
-	gwtToken, err := gwt.DecodeGWT(tkn)
+	gwtTok := gwt.GWT{}
+	err := gwtTok.Decode(tkn)
 	if err != nil {
 		return err
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByID(gwtToken.Header.ID)
+	identity, err := a.IdentityRepo.FindIdentityByID(gwtTok.Header.ID)
 	if err != nil {
 		return errors.New("account not found")
 	}
 
-	iden.Signature = ""
+	identity.Signature = ""
 
-	return a.IdentityRepo.Persist(iden)
+	return a.IdentityRepo.Persist(identity)
 }

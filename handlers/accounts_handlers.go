@@ -26,6 +26,7 @@ func AccountsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 	}
 }
+
 func AccountHandler(w http.ResponseWriter, r *http.Request) {
 	// Pass the request context onto the database layer.
 	info := &struct {

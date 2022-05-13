@@ -2,7 +2,7 @@ package entities
 
 import (
 	"github.com/google/uuid"
-	bflag "github.com/vaiktorg/grimoire/bitflag"
+	"github.com/vaiktorg/grimoire/bitflag"
 )
 
 type Identity struct {
@@ -15,10 +15,10 @@ type Identity struct {
 	Account   *Account `gorm:"foreignKey:AccountID"`
 
 	GroupsID string
-	Groups   bflag.Bit `gorm:"foreignKey:GroupsID"`
+	Groups   bitflag.Bit `gorm:"foreignKey:GroupsID"`
 
 	PermissionsID string
-	Permissions   bflag.Bit `gorm:"foreignKey:PermissionsID"`
+	Permissions   bitflag.Bit `gorm:"foreignKey:PermissionsID"`
 
 	Signature string
 }
