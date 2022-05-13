@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/vaiktorg/Authentity/entities"
-	"github.com/vaiktorg/Authentity/gwt"
 	"github.com/vaiktorg/grimoire/helpers"
+	"github.com/vaiktorg/gwt"
 	"gorm.io/driver/sqlite"
 	"strings"
 	"time"
@@ -79,7 +79,8 @@ func (a *Authentity) RegisterIdentity(prof *entities.Profile, acc *entities.Acco
 }
 
 func (a *Authentity) LoginToken(tkn string) error {
-	gwtToken, err := gwt.DecodeGWT(tkn)
+	gwtTok := gwt.GWT{}
+	err := gwtTok.Decode(tkn)
 	if err != nil {
 		return err
 	}
@@ -89,24 +90,24 @@ func (a *Authentity) LoginToken(tkn string) error {
 		return a.IdentityRepo.Persist(iden)
 	}
 
-	if gwtToken.Header.Issuer != a.Issuer {
+	if gwtTok.Header.Issuer != a.Issuer {
 		return errors.New("token not issued by server")
 	}
 
-	if time.Since(gwtToken.Header.Timestamp) >= ExpireTime {
+	if time.Since(gwtTok.Header.Timestamp) >= ExpireTime {
 		return errors.New("token expired")
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByID(gwtToken.Header.ID)
+	iden, err := a.IdentityRepo.FindIdentityByID(gwtTok.Header.ID)
 	if err != nil {
 		return errors.New("identity not found")
 	}
 
-	if iden.ID != gwtToken.Header.ID {
+	if iden.ID != gwtTok.Header.ID {
 		return errors.New("identity id mismatch")
 	}
 
-	if strings.Compare(iden.Signature, gwtToken.Signature) != 0 {
+	if strings.Compare(iden.Signature, string(gwtTok.Signature)) != 0 {
 		_ = clearSig(iden)
 		return errors.New("signature mismatch")
 	}
@@ -132,7 +133,7 @@ func (a *Authentity) LoginManual(username, email, password string) (string, erro
 		return "", err
 	}
 
-	tok, sig, err := gwt.NewToken(iden.ID, a.Issuer, gwt.Spice.Salt, gwt.Spice.Pepper, iden)
+	tok, sig, err := gwt.NewDefaultGWT(a.Issuer).Encode(iden)
 	if err != nil {
 		return "", err
 	}
@@ -148,12 +149,13 @@ func (a *Authentity) LoginManual(username, email, password string) (string, erro
 }
 
 func (a *Authentity) LogoutToken(tkn string) error {
-	gwtToken, err := gwt.DecodeGWT(tkn)
+	gwtTok := gwt.GWT{}
+	err := gwtTok.Decode(tkn)
 	if err != nil {
 		return err
 	}
 
-	iden, err := a.IdentityRepo.FindIdentityByID(gwtToken.Header.ID)
+	iden, err := a.IdentityRepo.FindIdentityByID(gwtTok.Header.ID)
 	if err != nil {
 		return errors.New("account not found")
 	}
