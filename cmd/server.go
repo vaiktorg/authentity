@@ -1,23 +1,48 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"github.com/vaiktorg/Authentity"
+	authentity "github.com/vaiktorg/Authentity"
+	"github.com/vaiktorg/Authentity/handlers"
+	"os"
+	"os/signal"
+
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/vaiktorg/grimoire/helpers"
 )
 
 func main() {
 	router := mux.NewRouter()
 
-	err := authentity.Routes(router)
+	err := handlers.Routes(router)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Printf("Authentity Instance: %s\n", authentity.Global.Issuer)
 
-	helpers.ServerCloser(&http.Server{Handler: router, Addr: ":8080"})
+	ServerCloser(&http.Server{Handler: router, Addr: ":8080"})
+}
+
+func ServerCloser(server *http.Server) {
+	go func() {
+		err := server.ListenAndServe()
+		if err == os.ErrClosed {
+			fmt.Println(err)
+		}
+	}()
+	fmt.Println("Listening on", server.Addr)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
+	err := server.Shutdown(context.Background())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println("Shutting Down")
+	os.Exit(0)
 }
