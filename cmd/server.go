@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	authentity "github.com/vaiktorg/Authentity"
-	"github.com/vaiktorg/Authentity/handlers"
+	"github.com/vaiktorg/authentity"
+	"github.com/vaiktorg/authentity/handlers"
 	"os"
 	"os/signal"
 

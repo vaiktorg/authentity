@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	. "github.com/vaiktorg/Authentity/entities"
+	. "github.com/vaiktorg/authentity/entities"
 	"net/http"
 
 	"github.com/gorilla/mux"

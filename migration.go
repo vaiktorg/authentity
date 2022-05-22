@@ -2,7 +2,7 @@ package authentity
 
 import (
 	"encoding/json"
-	"github.com/vaiktorg/Authentity/entities"
+	"github.com/vaiktorg/authentity/entities"
 	"os"
 	"path/filepath"
 

@@ -2,7 +2,7 @@ package authentity
 
 import (
 	"database/sql"
-	"github.com/vaiktorg/Authentity/entities"
+	"github.com/vaiktorg/authentity/entities"
 	"sync"
 
 	"gorm.io/gorm"

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/vaiktorg/Authentity/entities"
+	"github.com/vaiktorg/authentity/entities"
 
 	"gorm.io/gorm"
 )
