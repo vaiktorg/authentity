@@ -3,7 +3,7 @@ package authentity
 import (
 	"errors"
 	"fmt"
-	"github.com/vaiktorg/Authentity/entities"
+	"github.com/vaiktorg/authentity/entities"
 	"github.com/vaiktorg/grimoire/helpers"
 	"github.com/vaiktorg/gwt"
 	"gorm.io/driver/sqlite"

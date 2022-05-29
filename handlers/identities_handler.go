@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/vaiktorg/authentity/entities"
 	"net/http"
 
 	"github.com/gorilla/mux"
-
-	"github.com/vaiktorg/authentity/entities"
 
 	"gorm.io/gorm"
 )

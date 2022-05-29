@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	. "github.com/vaiktorg/authentity/entities"
+	"github.com/vaiktorg/authentity/entities"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -51,7 +51,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 //==================================
 
-func FetchProfile(ctx context.Context, id string) (*Profile, error) {
+func FetchProfile(ctx context.Context, id string) (*entities.Profile, error) {
 	// Retrieve the connection pool from the context. Because the
 	// r.Context().Value() method always returns an interface{} type, we
 	// need to type assert it into a *sql.DB before using it.
@@ -60,8 +60,8 @@ func FetchProfile(ctx context.Context, id string) (*Profile, error) {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
-	prof := &Profile{
-		Model: Model{ID: id},
+	prof := &entities.Profile{
+		Model: entities.Model{ID: id},
 	}
 	err := db.Transaction(func(tx *gorm.DB) error {
 		tx.Find(prof)
@@ -79,7 +79,7 @@ func FetchProfile(ctx context.Context, id string) (*Profile, error) {
 	return prof, nil
 }
 
-func AllProfiles(ctx context.Context) ([]Profile, error) {
+func AllProfiles(ctx context.Context) ([]entities.Profile, error) {
 	// Retrieve the connection pool from the context. Because the
 	// r.Context().Value() method always returns an interface{} type, we
 	// need to type assert it into a *sql.DB before using it.
@@ -88,7 +88,7 @@ func AllProfiles(ctx context.Context) ([]Profile, error) {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
-	var bks []Profile
+	var bks []entities.Profile
 	err := db.Transaction(func(tx *gorm.DB) error {
 		tx.Find(&bks)
 

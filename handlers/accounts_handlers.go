@@ -5,9 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"net/http"
-
 	"github.com/vaiktorg/authentity/entities"
+	"net/http"
 
 	"gorm.io/gorm"
 )
