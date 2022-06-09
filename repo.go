@@ -9,7 +9,7 @@ import (
 )
 
 type DBRepo struct {
-	sync.Mutex
+	mu sync.Mutex
 	db *gorm.DB
 }
 
@@ -21,8 +21,8 @@ func NewAuthentityRepo(db *gorm.DB) *DBRepo {
 
 // FindIdentityByID returns Identity when matched with a ProfileID.
 func (a *DBRepo) FindIdentityByID(id string) (identity *entities.Identity, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&identity, "id = ?", id)
@@ -35,8 +35,8 @@ func (a *DBRepo) FindIdentityByID(id string) (identity *entities.Identity, err e
 
 // FindIdentityByProfileID returns Identity when matched with a ProfileID.
 func (a *DBRepo) FindIdentityByProfileID(profileId string) (identity *entities.Identity, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&identity, "profile_id = ?", profileId)
@@ -49,8 +49,8 @@ func (a *DBRepo) FindIdentityByProfileID(profileId string) (identity *entities.I
 
 // FindIdentityByAccountID returns Identity when matched with a AccountID.
 func (a *DBRepo) FindIdentityByAccountID(accId string) (identity *entities.Identity, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&identity, "account_id = ?", accId)
@@ -63,8 +63,8 @@ func (a *DBRepo) FindIdentityByAccountID(accId string) (identity *entities.Ident
 
 // FindAccountByUsername returns Account when matched with a username.
 func (a *DBRepo) FindAccountByUsername(username string) (acc *entities.Account, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&acc, "username = ?", username)
@@ -77,8 +77,8 @@ func (a *DBRepo) FindAccountByUsername(username string) (acc *entities.Account, 
 
 // FindAccountByEmail returns Account when matched with an email.
 func (a *DBRepo) FindAccountByEmail(email string) (acc *entities.Account, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&acc, "email = ?", email)
@@ -91,8 +91,8 @@ func (a *DBRepo) FindAccountByEmail(email string) (acc *entities.Account, err er
 
 // FindProfileByUsername returns Profile when matched with a username.
 func (a *DBRepo) FindProfileByUsername(username string) (acc *entities.Profile, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&acc, "username = ?", username)
@@ -105,8 +105,8 @@ func (a *DBRepo) FindProfileByUsername(username string) (acc *entities.Profile, 
 
 // FindProfileByEmail returns Profile when matched with an email.
 func (a *DBRepo) FindProfileByEmail(email string) (acc *entities.Profile, err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Take(&acc, "email = ?", email)
@@ -119,8 +119,8 @@ func (a *DBRepo) FindProfileByEmail(email string) (acc *entities.Profile, err er
 
 // All returns array of result
 func (a *DBRepo) All(dst []interface{}) (err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Find(dst)
@@ -131,8 +131,8 @@ func (a *DBRepo) All(dst []interface{}) (err error) {
 
 // Find anything by ID in their gorm.Model struct.
 func (a *DBRepo) Find(dst interface{}) (err error) {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Find(dst)
@@ -143,8 +143,8 @@ func (a *DBRepo) Find(dst interface{}) (err error) {
 
 // Persist saves if ID not found, and updates if ID found.
 func (a *DBRepo) Persist(dst interface{}) error {
-	a.Lock()
-	defer a.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		tx.Save(dst)

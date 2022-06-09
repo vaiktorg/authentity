@@ -50,13 +50,16 @@ func IdentityHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FetchIdentities(ctx context.Context) ([]entities.Identity, error) {
-	db, ok := ctx.Value("db").(*gorm.DB)
+	access, ok := ctx.Value("access").(*DataProvider)
 	if !ok {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
 	var prof []entities.Identity
-	err := db.Transaction(func(tx *gorm.DB) error {
+
+	access.Mutex.Lock()
+	defer access.Mutex.Unlock()
+	err := access.DB.Transaction(func(tx *gorm.DB) error {
 		tx.Find(prof)
 
 		if len(prof) <= 0 {
@@ -72,13 +75,16 @@ func FetchIdentities(ctx context.Context) ([]entities.Identity, error) {
 	return prof, nil
 }
 func FetchIdentity(ctx context.Context, ID string) ([]entities.Identity, error) {
-	db, ok := ctx.Value("db").(*gorm.DB)
+	access, ok := ctx.Value("db").(*DataProvider)
 	if !ok {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
 	var prof []entities.Identity
-	err := db.Transaction(func(tx *gorm.DB) error {
+
+	access.Mutex.Lock()
+	defer access.Mutex.Unlock()
+	err := access.DB.Transaction(func(tx *gorm.DB) error {
 		tx.Take(prof, "id = ?", ID)
 
 		if prof == nil {

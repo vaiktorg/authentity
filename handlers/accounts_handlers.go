@@ -55,13 +55,16 @@ func AccountHandler(w http.ResponseWriter, r *http.Request) {
 //==================================
 
 func GetAccount(ctx context.Context, username, email string) (*entities.Account, error) {
-	db, ok := ctx.Value("db").(*gorm.DB)
+	access, ok := ctx.Value("access").(*DataProvider)
 	if !ok {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
 	var acc = &entities.Account{}
-	err := db.Transaction(func(tx *gorm.DB) error {
+
+	access.Mutex.Lock()
+	defer access.Mutex.Unlock()
+	err := access.DB.Transaction(func(tx *gorm.DB) error {
 		tx.Take(acc, "username = ? and email = ?", username, email)
 
 		if acc == nil {
@@ -78,13 +81,16 @@ func GetAccount(ctx context.Context, username, email string) (*entities.Account,
 }
 
 func AllAccounts(ctx context.Context) ([]entities.Account, error) {
-	db, ok := ctx.Value("db").(*gorm.DB)
+	access, ok := ctx.Value("access").(*DataProvider)
 	if !ok {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
 	var bks []entities.Account
-	err := db.Transaction(func(tx *gorm.DB) error {
+
+	access.Mutex.Lock()
+	defer access.Mutex.Unlock()
+	err := access.DB.Transaction(func(tx *gorm.DB) error {
 		tx.Find(&bks)
 
 		if len(bks) <= 0 {

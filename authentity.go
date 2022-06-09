@@ -2,11 +2,8 @@ package authentity
 
 import (
 	"errors"
-	"fmt"
 	"github.com/vaiktorg/authentity/entities"
-	"github.com/vaiktorg/grimoire/helpers"
 	"github.com/vaiktorg/gwt"
-	"gorm.io/driver/sqlite"
 	"strings"
 	"time"
 
@@ -19,19 +16,18 @@ type (
 	Authentity struct {
 		IdentityRepo *DBRepo
 		Issuer       string
+		encoder      *gwt.Encoder
+		decoder      *gwt.Decoder
+		db           *gorm.DB
+	}
+
+	AuthMan struct {
+		login chan entities.Account
 	}
 )
 
-var (
-	Global *Authentity
-)
-
-func init() {
-	Global = NewAuthentity(fmt.Sprintf("Global_%s", helpers.MakeTimestampNum()))
-}
-
-func NewAuthentity(issuerName string) *Authentity {
-	db, err := gorm.Open(sqlite.Open("DB.db"), &gorm.Config{})
+func NewAuthentity(issuerName string, dialector gorm.Dialector) *Authentity {
+	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -39,10 +35,16 @@ func NewAuthentity(issuerName string) *Authentity {
 	auth := &Authentity{
 		IdentityRepo: NewAuthentityRepo(db),
 		Issuer:       issuerName,
+		db:           db,
+		decoder:      gwt.NewDecoder(),
+		encoder:      gwt.NewEncoder(),
 	}
 
-	if err := Migrate(db); err != nil {
-		panic(err)
+	if err = auth.Migrate(); err != nil {
+		switch err {
+		case AlreadyExistError:
+			break
+		}
 	}
 
 	return auth
@@ -78,41 +80,47 @@ func (a *Authentity) RegisterIdentity(prof *entities.Profile, acc *entities.Acco
 	return nil
 }
 
-func (a *Authentity) LoginToken(tkn string) error {
-	gwtTok := gwt.GWT{}
-	err := gwtTok.Decode(tkn)
-	if err != nil {
-		return err
-	}
+func (a *Authentity) LoginToken(tkn gwt.Token) error {
+	var errs error
 
-	clearSig := func(identity *entities.Identity) error {
-		identity.Signature = ""
-		return a.IdentityRepo.Persist(identity)
-	}
+	a.decoder.Decode(tkn, func(value gwt.Value, err error) {
+		if err != nil {
+			errs = err
+			return
+		}
 
-	if gwtTok.Header.Issuer != a.Issuer {
-		return errors.New("token not issued by server")
-	}
+		clearSig := func(identity *entities.Identity) error {
+			identity.Signature = ""
+			return a.IdentityRepo.Persist(identity)
+		}
 
-	if time.Since(gwtTok.Header.Timestamp) >= ExpireTime {
-		return errors.New("token expired")
-	}
+		if value.Issuer != a.Issuer {
+			errs = errors.New("token not issued by server")
+			return
+		}
 
-	identity, err := a.IdentityRepo.FindIdentityByID(gwtTok.Header.ID)
-	if err != nil {
-		return errors.New("identity not found")
-	}
+		if time.Since(value.Timestamp) >= ExpireTime {
+			errs = errors.New("token expired")
+			return
+		}
 
-	if identity.ID != gwtTok.Header.ID {
-		return errors.New("identity id mismatch")
-	}
+		account, err := a.IdentityRepo.FindAccountByUsername(value.Username)
+		if err != nil {
+			errs = errors.New("identity not found")
+		}
 
-	if strings.Compare(identity.Signature, string(gwtTok.Signature)) != 0 {
-		_ = clearSig(identity)
-		return errors.New("signature mismatch")
-	}
+		identity, err := a.IdentityRepo.FindIdentityByAccountID(account.ID)
+		if err != nil {
+			errs = errors.New("identity not found")
+		}
 
-	return nil
+		if strings.Compare(identity.Signature, string(value.Signature)) != 0 {
+			_ = clearSig(identity)
+			errs = errors.New("signature mismatch")
+		}
+	})
+
+	return errs
 }
 
 func (a *Authentity) LoginManual(username, email, password string) (string, error) {
@@ -133,34 +141,51 @@ func (a *Authentity) LoginManual(username, email, password string) (string, erro
 		return "", err
 	}
 
-	tok, sig, err := gwt.NewDefaultGWT(a.Issuer).Encode(identity)
+	var tok gwt.Token
+	a.encoder.Encode(gwt.Value{
+		Issuer:    a.Issuer,
+		Username:  acc.Username,
+		Timestamp: time.Now().Add(time.Hour),
+	}, func(token gwt.Token, err error) {
+		identity.Signature = string(token.Signature)
+		e := a.IdentityRepo.Persist(identity)
+		if e != nil {
+			err = e
+		}
+
+		tok = token
+	})
 	if err != nil {
 		return "", err
 	}
 
-	identity.Signature = sig
-
-	err = a.IdentityRepo.Persist(identity)
-	if err != nil {
-		return "", err
-	}
-
-	return tok, nil
+	return tok.Token, nil
 }
 
 func (a *Authentity) LogoutToken(tkn string) error {
-	gwtTok := gwt.GWT{}
-	err := gwtTok.Decode(tkn)
-	if err != nil {
-		return err
-	}
+	var errs error
+	a.decoder.Decode(gwt.Token{Token: tkn}, func(value gwt.Value, err error) {
+		if err != nil {
+			errs = err
+		}
 
-	identity, err := a.IdentityRepo.FindIdentityByID(gwtTok.Header.ID)
-	if err != nil {
-		return errors.New("account not found")
-	}
+		account, e := a.IdentityRepo.FindAccountByUsername(value.Username)
+		if e != nil {
+			errs = errors.New("account not found")
+		}
 
-	identity.Signature = ""
+		identity, e := a.IdentityRepo.FindIdentityByAccountID(account.ID)
+		if e != nil {
+			errs = errors.New("account not found")
+		}
 
-	return a.IdentityRepo.Persist(identity)
+		identity.Signature = ""
+
+		e = a.IdentityRepo.Persist(identity)
+		if err != nil {
+			errs = err
+		}
+	})
+
+	return errs
 }

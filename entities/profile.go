@@ -4,7 +4,7 @@ type Address struct {
 	Model
 	Addr1, Addr2         string
 	City, State, Country string
-	Zip1                 string
+	Zip                  string
 }
 
 // Profile TODO: Migrate table changes

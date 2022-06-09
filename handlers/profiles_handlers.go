@@ -55,7 +55,7 @@ func FetchProfile(ctx context.Context, id string) (*entities.Profile, error) {
 	// Retrieve the connection pool from the context. Because the
 	// r.Context().Value() method always returns an interface{} type, we
 	// need to type assert it into a *sql.DB before using it.
-	db, ok := ctx.Value("db").(*gorm.DB)
+	db, ok := ctx.Value("access").(*DataProvider)
 	if !ok {
 		return nil, errors.New("could not get database connection pool from context")
 	}
@@ -63,7 +63,10 @@ func FetchProfile(ctx context.Context, id string) (*entities.Profile, error) {
 	prof := &entities.Profile{
 		Model: entities.Model{ID: id},
 	}
-	err := db.Transaction(func(tx *gorm.DB) error {
+
+	db.Mutex.Lock()
+	defer db.Mutex.Unlock()
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		tx.Find(prof)
 
 		if prof == nil {
@@ -83,13 +86,16 @@ func AllProfiles(ctx context.Context) ([]entities.Profile, error) {
 	// Retrieve the connection pool from the context. Because the
 	// r.Context().Value() method always returns an interface{} type, we
 	// need to type assert it into a *sql.DB before using it.
-	db, ok := ctx.Value("db").(*gorm.DB)
+	db, ok := ctx.Value("access").(*DataProvider)
 	if !ok {
 		return nil, errors.New("could not get database connection pool from context")
 	}
 
 	var bks []entities.Profile
-	err := db.Transaction(func(tx *gorm.DB) error {
+
+	db.Mutex.Lock()
+	defer db.Mutex.Unlock()
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		tx.Find(&bks)
 
 		if len(bks) <= 0 {
